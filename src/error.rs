@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables)]
+
 use derive_more::Display;
 use log::error;
 use thiserror::Error;

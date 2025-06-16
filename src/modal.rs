@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables)]
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
