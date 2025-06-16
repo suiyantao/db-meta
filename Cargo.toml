@@ -1,0 +1,22 @@
+[package]
+name = "db-meta"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.87"
+thiserror = "2.0.12"
+sqlx = { version = "=0.7.4", features = [
+    "postgres",
+    "runtime-tokio-native-tls",
+    "chrono",
+    "macros",
+    "bigdecimal",
+    "mysql",
+] }
+derive_more = { version = "2.0.1", features = ["full"] }
+log = "0.4.26"
+derive_builder = "0.20.2"
+serde = { version = "1.0.218", features = ["derive"] }
+actix-test = "0.1.5"
+actix-rt = "2.10.0"
