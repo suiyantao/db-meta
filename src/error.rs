@@ -3,7 +3,7 @@ use log::error;
 use thiserror::Error;
 
 #[derive(Debug, Display, Error)]
-pub enum ServiceError {
+pub enum MetaError {
     #[display("{_0}")]
     BadRequest(String),
 
@@ -14,23 +14,23 @@ pub enum ServiceError {
     InvalidArgument(String),
 }
 
-impl From<sqlx::Error> for ServiceError {
+impl From<sqlx::Error> for MetaError {
     fn from(value: sqlx::Error) -> Self {
         match value {
             e => {
                 error!("{:?}", e);
-                ServiceError::DbException(format!("{}", e))
+                MetaError::DbException(format!("{}", e))
             }
         }
     }
 }
 
-impl From<std::io::Error> for ServiceError {
+impl From<std::io::Error> for MetaError {
     fn from(value: std::io::Error) -> Self {
         match value {
             e => {
                 error!("{:?}", e);
-                ServiceError::BadRequest(format!("{}", e))
+                MetaError::BadRequest(format!("{}", e))
             }
         }
     }

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::{
-    error::ServiceError,
+    error::MetaError,
     modal::{ConnConfig, DbType, MetaData, TableInfo, ViewsInfo},
     mysql_meta::MysqlMeta,
     pg_meta::PgMeta,
@@ -14,21 +14,21 @@ pub struct MetaDataService {
 }
 
 impl MetaDataService {
-    pub fn new(cc: ConnConfig) -> Result<Self, ServiceError> {
+    pub fn new(cc: ConnConfig) -> Result<Self, MetaError> {
         cc.validate()?;
         Ok(Self { connection: cc })
     }
 
-    async fn create_meta(&self) -> Result<Box<dyn MetaTrait>, ServiceError> {
+    async fn create_meta(&self) -> Result<Box<dyn MetaTrait>, MetaError> {
         return match self.connection.db_type {
             DbType::Postgresql => Ok(Box::new(PgMeta::new(&self.connection).await?)),
             DbType::MySql => Ok(Box::new(MysqlMeta::new(&self.connection).await?)),
-            DbType::MariaDB => return Err(ServiceError::InvalidArgument("暂不支持MariaDB".into())),
-            DbType::SQLite => return Err(ServiceError::InvalidArgument("暂不支持SQLite".into())),
+            DbType::MariaDB => return Err(MetaError::InvalidArgument("暂不支持MariaDB".into())),
+            DbType::SQLite => return Err(MetaError::InvalidArgument("暂不支持SQLite".into())),
         };
     }
 
-    pub async fn get_meta(&self) -> Result<MetaData, ServiceError> {
+    pub async fn get_meta(&self) -> Result<MetaData, MetaError> {
         // 在 get_meta 方法中调用抽取的方法
         let meta = self.create_meta().await?;
 
@@ -46,7 +46,7 @@ impl MetaDataService {
     }
 }
 
-type MyResult<T> = Result<T, ServiceError>;
+type MyResult<T> = Result<T, MetaError>;
 
 #[async_trait]
 pub trait MetaTrait: Send + Sync {

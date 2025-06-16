@@ -1,7 +1,7 @@
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ServiceError;
+use crate::error::MetaError;
 
 #[derive(Debug, Clone, Builder)]
 pub struct ConnConfig {
@@ -23,18 +23,18 @@ pub enum DbType {
 }
 
 impl ConnConfig {
-    pub fn validate(&self) -> Result<(), ServiceError> {
+    pub fn validate(&self) -> Result<(), MetaError> {
         if self.username.is_empty() {
-            return Err(ServiceError::InvalidArgument("用户名不能为空".into()));
+            return Err(MetaError::InvalidArgument("用户名不能为空".into()));
         }
         if self.password.is_empty() {
-            return Err(ServiceError::InvalidArgument("密码不能为空".into()));
+            return Err(MetaError::InvalidArgument("密码不能为空".into()));
         }
         if self.url.is_empty() {
-            return Err(ServiceError::InvalidArgument("地址不能为空".into()));
+            return Err(MetaError::InvalidArgument("地址不能为空".into()));
         }
         if self.database.is_empty() {
-            return Err(ServiceError::InvalidArgument("数据库不能为空".into()));
+            return Err(MetaError::InvalidArgument("数据库不能为空".into()));
         }
         Ok(())
     }

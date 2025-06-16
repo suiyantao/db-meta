@@ -1,4 +1,4 @@
-use crate::error::ServiceError;
+use crate::error::MetaError;
 use crate::modal::{Column, ConnConfig, FiledTypeEnum, IndexInfo, TableInfo, ViewsInfo};
 
 use super::meta::MetaTrait;
@@ -17,7 +17,7 @@ pub struct PgMeta {
 
 impl PgMeta {
     /// 创建PgMeta实例
-    pub async fn new(conn_config: &ConnConfig) -> Result<Self, ServiceError> {
+    pub async fn new(conn_config: &ConnConfig) -> Result<Self, MetaError> {
         let url = format!(
             "postgres://{user_name}:{password}@{host}:{port}/{dbname}",
             user_name = conn_config.username,
@@ -42,7 +42,7 @@ impl PgMeta {
 #[async_trait]
 impl MetaTrait for PgMeta {
     /// 获取所有表信息
-    async fn get_tables(&self) -> Result<Vec<TableInfo>, ServiceError> {
+    async fn get_tables(&self) -> Result<Vec<TableInfo>, MetaError> {
         let sql = r"SELECT
        n.nspname AS TABLE_SCHEM,
        c.relname AS TABLE_NAME,
@@ -69,7 +69,7 @@ WHERE c.relnamespace = n.oid and n.nspname = 'public' and c.relkind = 'r';";
     }
 
     /// 设置表的主键信息
-    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = "SELECT result.TABLE_SCHEMA, result.TABLE_NAME, result.COLUMN_NAME, result.KEY_SEQ, result.PK_NAME
 FROM (SELECT NULL AS TABLE_CAT,
              n.nspname AS TABLE_SCHEMA,
@@ -105,7 +105,7 @@ ORDER BY result.table_name, result.pk_name, result.key_seq";
     }
 
     /// 设置表的索引信息
-    async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = "SELECT result.TABLE_SCHEM, result.TABLE_NAME, result.COLUMN_NAME, result.KEY_SEQ, result.PK_NAME, indexdef
 FROM (SELECT NULL AS TABLE_CAT,
              n.nspname AS TABLE_SCHEM,
@@ -153,7 +153,7 @@ ORDER BY result.table_name, result.pk_name, result.key_seq;";
     }
 
     /// 设置表的列信息
-    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let tables: Vec<_> = table_vec
             .iter()
             .map(|table| table.table_name.clone())
@@ -228,7 +228,7 @@ where
     }
 
     /// 获取所有视图信息
-    async fn get_views(&self) -> Result<Vec<ViewsInfo>, ServiceError> {
+    async fn get_views(&self) -> Result<Vec<ViewsInfo>, MetaError> {
         let sql = r"SELECT
        n.nspname AS TABLE_SCHEM,
        c.relname AS TABLE_NAME,
@@ -254,7 +254,7 @@ WHERE c.relnamespace = n.oid and n.nspname = 'public' and c.relkind = 'v';";
     }
 
     /// 设置视图的列信息
-    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), ServiceError> {
+    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
         let views: Vec<_> = view_vec.iter().map(|view| view.view_name.clone()).collect();
         let views_str = views.join("','");
 
@@ -317,13 +317,13 @@ where
     }
 
     /// 执行计数SQL查询
-    async fn count(&self, sql: &str) -> Result<i64, ServiceError> {
+    async fn count(&self, sql: &str) -> Result<i64, MetaError> {
         let result = sqlx::query(&sql).fetch_one(&self.pool).await?;
         Ok(result.get(0))
     }
 
     /// 执行查询并返回结果集
-    async fn query(&self, sql: &str) -> Result<Vec<Vec<String>>, ServiceError> {
+    async fn query(&self, sql: &str) -> Result<Vec<Vec<String>>, MetaError> {
         let result = sqlx::query(&sql).fetch_all(&self.pool).await?;
 
         let rows = result

@@ -1,4 +1,4 @@
-use crate::error::ServiceError;
+use crate::error::MetaError;
 use crate::modal::{Column, ConnConfig, FiledTypeEnum, IndexInfo, TableInfo, ViewsInfo};
 use async_trait::async_trait;
 use sqlx::mysql::MySqlPoolOptions;
@@ -15,7 +15,7 @@ pub struct MysqlMeta {
 }
 
 impl MysqlMeta {
-    pub(crate) async fn new(conn_config: &ConnConfig) -> Result<Self, ServiceError> {
+    pub(crate) async fn new(conn_config: &ConnConfig) -> Result<Self, MetaError> {
         let url = format!(
             "mysql://{user_name}:{password}@{host}:{port}/{dbname}",
             user_name = conn_config.username,
@@ -40,7 +40,7 @@ impl MysqlMeta {
         &self,
         table_names: Vec<String>,
         pk_map: HashMap<String, String>,
-    ) -> Result<HashMap<String, Vec<Column>>, ServiceError> {
+    ) -> Result<HashMap<String, Vec<Column>>, MetaError> {
         let tables_str = table_names.join("','");
 
         let sql = format!(
@@ -120,7 +120,7 @@ impl MysqlMeta {
 
 #[async_trait]
 impl MetaTrait for MysqlMeta {
-    async fn get_tables(&self) -> Result<Vec<TableInfo>, ServiceError> {
+    async fn get_tables(&self) -> Result<Vec<TableInfo>, MetaError> {
         let sql = format!(
             "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{db_name}' AND TABLE_TYPE = 'BASE TABLE'",
             db_name = &self.conn_config.database
@@ -137,7 +137,7 @@ impl MetaTrait for MysqlMeta {
         Ok(rows)
     }
 
-    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = format!(
             "SELECT TABLE_NAME, COLUMN_NAME
             FROM INFORMATION_SCHEMA.`KEY_COLUMN_USAGE`
@@ -158,7 +158,7 @@ impl MetaTrait for MysqlMeta {
         Ok(())
     }
 
-    async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = format!(
             "SELECT
         a.TABLE_SCHEMA,
@@ -194,7 +194,7 @@ impl MetaTrait for MysqlMeta {
         Ok(())
     }
 
-    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), ServiceError> {
+    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let table_names = table_vec.iter().map(|x| x.table_name.clone()).collect();
 
         let pk_map: HashMap<String, String> = table_vec
@@ -214,7 +214,7 @@ impl MetaTrait for MysqlMeta {
         Ok(())
     }
 
-    async fn get_views(&self) -> Result<Vec<ViewsInfo>, ServiceError> {
+    async fn get_views(&self) -> Result<Vec<ViewsInfo>, MetaError> {
         let sql = format!(
             "SELECT TABLE_SCHEMA,
                     TABLE_NAME,
@@ -233,7 +233,7 @@ impl MetaTrait for MysqlMeta {
         Ok(views)
     }
 
-    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), ServiceError> {
+    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
         let view_names = view_vec.iter().map(|x| x.view_name.clone()).collect();
         let column_map = self.get_columns(view_names, HashMap::new()).await?;
 
@@ -246,13 +246,13 @@ impl MetaTrait for MysqlMeta {
         Ok(())
     }
 
-    async fn count(&self, sql: &str) -> Result<i64, ServiceError> {
+    async fn count(&self, sql: &str) -> Result<i64, MetaError> {
         let row = sqlx::query(&sql).fetch_one(&self.pool).await?;
         Ok(row.get(0))
     }
 
     /// query
-    async fn query(&self, sql: &str) -> Result<Vec<Vec<String>>, ServiceError> {
+    async fn query(&self, sql: &str) -> Result<Vec<Vec<String>>, MetaError> {
         let result = sqlx::query(&sql).fetch_all(&self.pool).await?;
 
         let rows = result
