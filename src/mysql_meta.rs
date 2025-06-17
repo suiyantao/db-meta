@@ -44,11 +44,11 @@ impl MysqlMeta {
         let tables_str = table_names.join("','");
 
         let sql = format!(
-            "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, DATA_TYPE,
+            "SELECT CONVERT(TABLE_NAME,char), CONVERT(COLUMN_NAME,char), CONVERT(DATA_TYPE,char), CONVERT(COLUMN_TYPE,char),
                     CHARACTER_MAXIMUM_LENGTH,
                     NUMERIC_SCALE,
                     IS_NULLABLE,
-                    COLUMN_COMMENT,
+                    CONVERT(COLUMN_COMMENT,char),
                     EXTRA
              FROM information_schema.COLUMNS
              WHERE TABLE_SCHEMA = '{schema}'
@@ -118,27 +118,19 @@ impl MysqlMeta {
     }
 }
 
-fn get_column_val(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<String, sqlx::Error> {
-    let mut schema_res: Result<String, sqlx::Error> = row.try_get(index);
-    if  schema_res.is_err() {
-        let res: Result<Vec<u8>, sqlx::Error> = row.try_get(0);
-        schema_res = res.map(|x| String::from_utf8(x).unwrap());
-    }
-    return schema_res;
-}
 
 #[async_trait]
 impl MetaTrait for MysqlMeta {
     async fn get_tables(&self) -> Result<Vec<TableInfo>, MetaError> {
         let sql = format!(
-            "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{db_name}' AND TABLE_TYPE = 'BASE TABLE'",
+            "SELECT CONVERT(TABLE_SCHEMA,char), CONVERT(TABLE_NAME,char), CONVERT(TABLE_COMMENT,char) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{db_name}' AND TABLE_TYPE = 'BASE TABLE'",
             db_name = &self.conn_config.database
         );
         let rows = sqlx::query(&sql)
             .map(|row: sqlx::mysql::MySqlRow| {
-                let schema = get_column_val(&row, 0).unwrap();
-                let table_name = get_column_val(&row, 1).unwrap();
-                let comment = get_column_val(&row, 2).unwrap();
+                let schema = row.get(0);
+                let table_name = row.get(1);
+                let comment = row.get(2);
                 TableInfo::new(schema, table_name, Some(comment))
             })
             .fetch_all(&self.pool)
@@ -148,7 +140,7 @@ impl MetaTrait for MysqlMeta {
 
     async fn set_primary_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = format!(
-            "SELECT TABLE_NAME, COLUMN_NAME
+            "SELECT CONVERT(TABLE_NAME,char), CONVERT(COLUMN_NAME,char)
             FROM INFORMATION_SCHEMA.`KEY_COLUMN_USAGE`
             WHERE TABLE_SCHEMA = '{schema}' AND CONSTRAINT_NAME = 'PRIMARY'",
             schema = &self.conn_config.database
@@ -156,7 +148,7 @@ impl MetaTrait for MysqlMeta {
 
         let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
         let pk_map: HashMap<String, String> =
-            rows.iter().map(|row| (get_column_val(row, 0).unwrap(), get_column_val(row, 1).unwrap())).collect();
+            rows.iter().map(|row| (row.get(0), row.get(1))).collect();
 
         for table in table_vec {
             if let Some(name) = pk_map.get(&table.table_name) {
@@ -170,10 +162,10 @@ impl MetaTrait for MysqlMeta {
     async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = format!(
             "SELECT
-        a.TABLE_SCHEMA,
-        a.TABLE_NAME,
-        a.index_name,
-        GROUP_CONCAT(column_name ORDER BY seq_in_index) AS `Columns`
+        CONVERT(a.TABLE_SCHEMA,char),
+        CONVERT(a.TABLE_NAME,char),
+        CONVERT(a.index_name,char),
+        GROUP_CONCAT(a.column_name ORDER BY seq_in_index) AS `Columns`
     FROM information_schema.statistics a
     WHERE a.table_schema = '{schema}' AND index_name <> 'PRIMARY'
     GROUP BY a.TABLE_SCHEMA, a.TABLE_NAME, a.index_name",
@@ -185,11 +177,11 @@ impl MetaTrait for MysqlMeta {
         let mut index_map: HashMap<String, Vec<IndexInfo>> = HashMap::new();
         for row in rows {
             index_map
-                .entry(get_column_val(&row, 1).unwrap())
+                .entry(row.get(1))
                 .or_insert_with(Vec::new)
                 .push(IndexInfo {
-                    column_name: get_column_val(&row, 3).unwrap(),
-                    index_name: get_column_val(&row, 2).unwrap(),
+                    column_name: row.get(0),
+                    index_name: row.get(1),
                     index_def: "".to_string(),
                 });
         }
@@ -225,9 +217,9 @@ impl MetaTrait for MysqlMeta {
 
     async fn get_views(&self) -> Result<Vec<ViewsInfo>, MetaError> {
         let sql = format!(
-            "SELECT TABLE_SCHEMA,
-                    TABLE_NAME,
-                    TABLE_COMMENT
+            "SELECT CONVERT(TABLE_SCHEMA,char),
+                    CONVERT(TABLE_NAME,char),
+                    CONVERT(TABLE_COMMENT,char)
              FROM information_schema.TABLES
              WHERE TABLE_SCHEMA = '{schema}'
                AND TABLE_TYPE = 'VIEW'",
@@ -237,7 +229,7 @@ impl MetaTrait for MysqlMeta {
         let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
         let views = rows
             .iter()
-            .map(|x| ViewsInfo::new(get_column_val(x, 0).unwrap(), get_column_val(x, 1).unwrap()))
+            .map(|row| ViewsInfo::new(row.get(0), row.get(1)))
             .collect();
         Ok(views)
     }
