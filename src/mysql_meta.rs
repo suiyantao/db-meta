@@ -1,5 +1,5 @@
 use crate::error::MetaError;
-use crate::modal::{Column, ConnConfig, FiledTypeEnum, IndexInfo, TableInfo, ViewsInfo};
+use crate::modal::{Column, ConnConfig, FieldTypeEnum, IndexInfo, TableInfo, ViewsInfo};
 use async_trait::async_trait;
 use sqlx::mysql::MySqlPoolOptions;
 use sqlx::{MySql, Pool, Row};
@@ -103,7 +103,7 @@ impl MysqlMeta {
                 .or_insert_with(Vec::new)
                 .push(Column {
                     name: column_name,
-                    c_type: FiledTypeEnum::mysql_filed_type(row.get(2)),
+                    column_type: FieldTypeEnum::mysql_field_type(row.get(2)),
                     type_name: row.get(2),
                     length: length as i32,
                     digit: digit.map(|x| x as i32),
@@ -137,7 +137,7 @@ impl MetaTrait for MysqlMeta {
         Ok(rows)
     }
 
-    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
+    async fn set_primary_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = format!(
             "SELECT TABLE_NAME, COLUMN_NAME
             FROM INFORMATION_SCHEMA.`KEY_COLUMN_USAGE`
@@ -194,7 +194,7 @@ impl MetaTrait for MysqlMeta {
         Ok(())
     }
 
-    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
+    async fn set_columns(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let table_names = table_vec.iter().map(|x| x.table_name.clone()).collect();
 
         let pk_map: HashMap<String, String> = table_vec
@@ -233,7 +233,7 @@ impl MetaTrait for MysqlMeta {
         Ok(views)
     }
 
-    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
+    async fn set_view_columns(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
         let view_names = view_vec.iter().map(|x| x.view_name.clone()).collect();
         let column_map = self.get_columns(view_names, HashMap::new()).await?;
 

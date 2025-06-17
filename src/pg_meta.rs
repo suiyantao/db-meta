@@ -1,5 +1,5 @@
 use crate::error::MetaError;
-use crate::modal::{Column, ConnConfig, FiledTypeEnum, IndexInfo, TableInfo, ViewsInfo};
+use crate::modal::{Column, ConnConfig, IndexInfo, TableInfo, ViewsInfo, FieldTypeEnum};
 
 use super::meta::MetaTrait;
 use async_trait::async_trait;
@@ -69,7 +69,7 @@ WHERE c.relnamespace = n.oid and n.nspname = 'public' and c.relkind = 'r';";
     }
 
     /// 设置表的主键信息
-    async fn set_pk_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
+    async fn set_primary_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let sql = "SELECT result.TABLE_SCHEMA, result.TABLE_NAME, result.COLUMN_NAME, result.KEY_SEQ, result.PK_NAME
 FROM (SELECT NULL AS TABLE_CAT,
              n.nspname AS TABLE_SCHEMA,
@@ -153,7 +153,7 @@ ORDER BY result.table_name, result.pk_name, result.key_seq;";
     }
 
     /// 设置表的列信息
-    async fn set_column(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
+    async fn set_columns(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
         let tables: Vec<_> = table_vec
             .iter()
             .map(|table| table.table_name.clone())
@@ -201,7 +201,7 @@ where
 
             let column = Column {
                 name: column_name,
-                c_type: FiledTypeEnum::pg_filed_type(row.get(3)),
+                column_type: FieldTypeEnum::pg_field_type(row.get(3)),
                 type_name: row.get(3),
                 length: row.get::<i32, usize>(4),
                 digit: row.get(5),
@@ -254,7 +254,7 @@ WHERE c.relnamespace = n.oid and n.nspname = 'public' and c.relkind = 'v';";
     }
 
     /// 设置视图的列信息
-    async fn set_view_column(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
+    async fn set_view_columns(&self, view_vec: &mut Vec<ViewsInfo>) -> Result<(), MetaError> {
         let views: Vec<_> = view_vec.iter().map(|view| view.view_name.clone()).collect();
         let views_str = views.join("','");
 
@@ -290,7 +290,7 @@ where
 
             let column = Column {
                 name: column_name,
-                c_type: FiledTypeEnum::pg_filed_type(row.get(3)),
+                column_type: FieldTypeEnum::pg_field_type(row.get(3)),
                 type_name: row.get(3),
                 length: row.get(4),
                 digit: row.get(5),

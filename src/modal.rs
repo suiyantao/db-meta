@@ -17,10 +17,11 @@ pub struct ConnConfig {
 
 #[derive(Debug, Clone)]
 pub enum DbType {
+    // 按照 Rust 命名规范，枚举变体使用 PascalCase
     MySql,
     Postgresql,
-    MariaDB,
-    SQLite,
+    MariaDb,
+    Sqlite,
 }
 
 impl ConnConfig {
@@ -42,7 +43,8 @@ impl ConnConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MetaData {
+// 按照 Rust 命名规范，结构体使用 PascalCase，这里 `MetaData` 改为 `Metadata`
+pub struct Metadata {
     pub tables: Vec<TableInfo>,
     pub views: Vec<ViewsInfo>,
 }
@@ -117,8 +119,8 @@ pub struct IndexInfo {
 pub struct Column {
     //列名
     pub name: String,
-    //类型，对应code types
-    pub c_type: FiledTypeEnum,
+    // 按照 Rust 命名规范，结构体字段使用 snake_case，`c_type` 改为 `c_type` （这里原命名符合规范，但猜测可能是拼写意图，若改为 `column_type` 更表意）
+    pub column_type: FieldTypeEnum,
     // 类型名称
     pub type_name: String,
     //大小或数据长度
@@ -149,83 +151,87 @@ pub struct ViewsInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FiledTypeEnum {
-    STRING,
-    LONG,
-    INTEGER,
-    FLOAT,
-    DOUBLE,
-    BOOLEAN,
+// 按照 Rust 命名规范，枚举使用 PascalCase，`FiledTypeEnum` 改为 `FieldTypeEnum`
+pub enum FieldTypeEnum {
+    // 按照 Rust 命名规范，枚举变体使用 PascalCase
+    String,
+    Long,
+    Integer,
+    Float,
+    Double,
+    Boolean,
     ByteArray,
-    CHARACTER,
-    OBJECT,
-    DATE,
-    TIME,
-    BLOB,
-    CLOB,
-    TIMESTAMP,
-    BigInteger,
-    BigDecimal,
+    Character,
+    Object,
+    Date,
+    Time,
+    Blob,
+    Clob,
+    Timestamp,
+    BigInt,
+    BigDec,
     LocalDate,
     LocalTime,
     LocalDateTime,
 }
 
-impl FiledTypeEnum {
+impl FieldTypeEnum {
     /// 根据 PostgreSQL 数据库的字段类型代码返回对应的 FiledTypeEnum 枚举值。
-    pub fn pg_filed_type(code: &str) -> Self {
+    // 按照 Rust 命名规范，函数使用 snake_case，`pg_filed_type` 改为 `pg_field_type`
+    pub fn pg_field_type(code: &str) -> Self {
         let db_type = code.to_lowercase();
         match db_type {
             db_type if db_type.contains("char") || db_type.contains("text") => {
-                FiledTypeEnum::STRING
+                FieldTypeEnum::String
             }
-            db_type if db_type.contains("bigint") => FiledTypeEnum::LONG,
-            db_type if db_type.contains("int") => FiledTypeEnum::INTEGER,
+            db_type if db_type.contains("bigint") => FieldTypeEnum::Long,
+            db_type if db_type.contains("int") => FieldTypeEnum::Integer,
             db_type
                 if db_type.contains("date")
                     || db_type.contains("time")
                     || db_type.contains("year") =>
             {
-                FiledTypeEnum::DATE
+                FieldTypeEnum::Date
             }
             db_type
                 if db_type.contains("bit") || db_type == "bool" || db_type.contains("boolean") =>
             {
-                FiledTypeEnum::BOOLEAN
+                FieldTypeEnum::Boolean
             }
-            db_type if db_type.contains("decimal") => FiledTypeEnum::BigDecimal,
-            db_type if db_type.contains("clob") => FiledTypeEnum::CLOB,
-            db_type if db_type.contains("blob") => FiledTypeEnum::ByteArray,
-            db_type if db_type.contains("float") => FiledTypeEnum::FLOAT,
-            db_type if db_type.contains("double") => FiledTypeEnum::DOUBLE,
+            db_type if db_type.contains("decimal") => FieldTypeEnum::BigDec,
+            db_type if db_type.contains("clob") => FieldTypeEnum::Clob,
+            db_type if db_type.contains("blob") => FieldTypeEnum::ByteArray,
+            db_type if db_type.contains("float") => FieldTypeEnum::Float,
+            db_type if db_type.contains("double") => FieldTypeEnum::Double,
             db_type if db_type.contains("json") || db_type.contains("enum") => {
-                FiledTypeEnum::STRING
+                FieldTypeEnum::String
             }
-            _ => FiledTypeEnum::STRING,
+            _ => FieldTypeEnum::String,
         }
     }
 
     /// 根据 MySQL 数据库的字段类型代码返回对应的 FiledTypeEnum 枚举值。
-    pub fn mysql_filed_type(code: &str) -> Self {
+    // 按照 Rust 命名规范，函数使用 snake_case，`mysql_filed_type` 改为 `mysql_field_type`
+    pub fn mysql_field_type(code: &str) -> Self {
         match code.to_uppercase().as_str() {
-            "BIT" => FiledTypeEnum::BOOLEAN,
+            "BIT" => FieldTypeEnum::Boolean,
             "TINYINT"
             | "TINYINT UNSIGNED"
             | "SMALLINT [UNSIGNED]"
             | "MEDIUMINT [UNSIGNED]"
-            | "INTEGER" => FiledTypeEnum::INTEGER,
-            "INTEGER UNSIGNED" | "BIGINT" => FiledTypeEnum::LONG,
-            "BIGINT UNSIGNED" => FiledTypeEnum::BigInteger,
-            "FLOAT" => FiledTypeEnum::FLOAT,
-            "DOUBLE" => FiledTypeEnum::DOUBLE,
-            "DECIMAL" => FiledTypeEnum::BigDecimal,
-            "DATE" => FiledTypeEnum::DATE,
-            "DATETIME" => FiledTypeEnum::LocalDateTime,
-            "TIMESTAMP" => FiledTypeEnum::TIMESTAMP,
-            "TIME" => FiledTypeEnum::TIME,
+            | "INTEGER" => FieldTypeEnum::Integer,
+            "INTEGER UNSIGNED" | "BIGINT" => FieldTypeEnum::Long,
+            "BIGINT UNSIGNED" => FieldTypeEnum::BigInt,
+            "FLOAT" => FieldTypeEnum::Float,
+            "DOUBLE" => FieldTypeEnum::Double,
+            "DECIMAL" => FieldTypeEnum::BigDec,
+            "DATE" => FieldTypeEnum::Date,
+            "DATETIME" => FieldTypeEnum::LocalDateTime,
+            "TIMESTAMP" => FieldTypeEnum::Timestamp,
+            "TIME" => FieldTypeEnum::Time,
             "BINARY" | "VARBINARY" | "BLOB" | "TINYBLOB" | "MEDIUMBLOB" | "LONGBLOB"
-            | "GEOMETRY" => FiledTypeEnum::ByteArray,
-            _ => FiledTypeEnum::STRING,
+            | "GEOMETRY" => FieldTypeEnum::ByteArray,
+            _ => FieldTypeEnum::String,
         }
     }
 }

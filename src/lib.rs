@@ -8,8 +8,7 @@ mod pg_meta;
 mod test {
 
     use crate::{
-        meta::MetaDataService,
-        modal::{ConnConfig, DbType},
+        meta::MetadataService, modal::{ConnConfig, DbType}
     };
     use std::error::Error;
 
@@ -25,9 +24,9 @@ mod test {
             schema: None,
         };
 
-        let meta_service = MetaDataService::new(cc).unwrap();
+        let meta_service = MetadataService::new(cc).unwrap();
 
-        let tables = meta_service.get_meta().await.unwrap();
+        let tables = meta_service.get_metadata().await.unwrap();
 
         println!("tables={}", tables.tables.len());
 
