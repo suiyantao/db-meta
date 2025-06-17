@@ -118,6 +118,15 @@ impl MysqlMeta {
     }
 }
 
+fn get_column_val(row: &sqlx::mysql::MySqlRow, index: usize) -> Result<String, sqlx::Error> {
+    let mut schema_res: Result<String, sqlx::Error> = row.try_get(index);
+    if  schema_res.is_err() {
+        let res: Result<Vec<u8>, sqlx::Error> = row.try_get(0);
+        schema_res = res.map(|x| String::from_utf8(x).unwrap());
+    }
+    return schema_res;
+}
+
 #[async_trait]
 impl MetaTrait for MysqlMeta {
     async fn get_tables(&self) -> Result<Vec<TableInfo>, MetaError> {
@@ -127,9 +136,9 @@ impl MetaTrait for MysqlMeta {
         );
         let rows = sqlx::query(&sql)
             .map(|row: sqlx::mysql::MySqlRow| {
-                let schema = row.get(0);
-                let table_name = row.get(1);
-                let comment = row.get(2);
+                let schema = get_column_val(&row, 0).unwrap();
+                let table_name = get_column_val(&row, 1).unwrap();
+                let comment = get_column_val(&row, 2).unwrap();
                 TableInfo::new(schema, table_name, Some(comment))
             })
             .fetch_all(&self.pool)
@@ -147,7 +156,7 @@ impl MetaTrait for MysqlMeta {
 
         let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
         let pk_map: HashMap<String, String> =
-            rows.iter().map(|row| (row.get(0), row.get(1))).collect();
+            rows.iter().map(|row| (get_column_val(row, 0).unwrap(), get_column_val(row, 1).unwrap())).collect();
 
         for table in table_vec {
             if let Some(name) = pk_map.get(&table.table_name) {
@@ -176,11 +185,11 @@ impl MetaTrait for MysqlMeta {
         let mut index_map: HashMap<String, Vec<IndexInfo>> = HashMap::new();
         for row in rows {
             index_map
-                .entry(row.get(1))
+                .entry(get_column_val(&row, 1).unwrap())
                 .or_insert_with(Vec::new)
                 .push(IndexInfo {
-                    column_name: row.get(3),
-                    index_name: row.get(2),
+                    column_name: get_column_val(&row, 3).unwrap(),
+                    index_name: get_column_val(&row, 2).unwrap(),
                     index_def: "".to_string(),
                 });
         }
@@ -228,7 +237,7 @@ impl MetaTrait for MysqlMeta {
         let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
         let views = rows
             .iter()
-            .map(|x| ViewsInfo::new(x.get(0), x.get(1)))
+            .map(|x| ViewsInfo::new(get_column_val(x, 0).unwrap(), get_column_val(x, 1).unwrap()))
             .collect();
         Ok(views)
     }
