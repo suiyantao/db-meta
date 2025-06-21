@@ -1,8 +1,8 @@
-pub(crate) mod error;
-pub(crate) mod meta;
-pub(crate) mod modal;
-mod mysql_meta;
-mod pg_meta;
+pub mod error;
+pub mod meta;
+pub mod modal;
+pub mod mysql_meta;
+pub mod pg_meta;
 
 #[cfg(test)]
 mod test {
