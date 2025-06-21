@@ -113,6 +113,7 @@ pub struct IndexInfo {
     pub column_name: String,
     pub index_name: String,
     pub index_def: String,
+    pub is_unique: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

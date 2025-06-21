@@ -30,6 +30,32 @@ mod test {
 
         println!("tables={}", tables.tables.len());
 
+        println!("{:?}",  &tables.tables);  
+
+        Ok(())
+    }
+
+    /// 测试pg
+    #[actix_rt::test]
+    async fn test_pg_meta() -> Result<(), Box<dyn Error>> {
+        let cc = ConnConfig {
+            url: "localhost".to_string(),
+            port: 5432,
+            username: "postgres".to_string(),
+            password: "postgres".to_string(),
+            database: "postgres".to_string(),
+            db_type: DbType::Postgresql,
+            schema: None,
+        };  
+
+        let meta_service = MetadataService::new(cc).unwrap();
+
+        let tables = meta_service.get_metadata().await.unwrap();
+
+        println!("tables={}", tables.tables.len());
+
+        println!("{:?}",  &tables.tables);  
+
         Ok(())
     }
 }

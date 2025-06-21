@@ -1,5 +1,5 @@
 use crate::error::MetaError;
-use crate::modal::{Column, ConnConfig, IndexInfo, TableInfo, ViewsInfo, FieldTypeEnum};
+use crate::modal::{Column, ConnConfig, FieldTypeEnum, IndexInfo, TableInfo, ViewsInfo};
 
 use super::meta::MetaTrait;
 use async_trait::async_trait;
@@ -106,41 +106,56 @@ ORDER BY result.table_name, result.pk_name, result.key_seq";
 
     /// 设置表的索引信息
     async fn set_index_key(&self, table_vec: &mut Vec<TableInfo>) -> Result<(), MetaError> {
-        let sql = "SELECT result.TABLE_SCHEM, result.TABLE_NAME, result.COLUMN_NAME, result.KEY_SEQ, result.PK_NAME, indexdef
-FROM (SELECT NULL AS TABLE_CAT,
-             n.nspname AS TABLE_SCHEM,
-             ct.relname AS TABLE_NAME,
-             a.attname AS COLUMN_NAME,
-             (information_schema._pg_expandarray(i.indkey)).n AS KEY_SEQ,
-             ci.relname AS PK_NAME,
-             information_schema._pg_expandarray(i.indkey) AS KEYS,
-             a.attnum AS A_ATTNUM,
-             p.indexdef
-      FROM pg_catalog.pg_class ct
-               JOIN pg_catalog.pg_attribute a ON (ct.oid = a.attrelid)
-               JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid)
-               JOIN pg_catalog.pg_index i ON (a.attrelid = i.indrelid)
-               JOIN pg_catalog.pg_class ci ON (ci.oid = i.indexrelid)
-               JOIN pg_indexes p on p.indexname = ci.relname
-      WHERE ci.relname not like '%_pkey') result
-ORDER BY result.table_name, result.pk_name, result.key_seq;";
+        let sql = "
+SELECT
+    n.nspname AS schema_name,
+    ct.relname AS table_name,
+    ci.relname AS index_name,
+    CASE WHEN i.indisunique THEN 'UNIQUE' ELSE 'NON-UNIQUE' END AS index_type,
+    pg_get_indexdef(i.indexrelid) AS index_definition,
+    ARRAY_TO_STRING(ARRAY_AGG(a.attname ORDER BY ia.attnum), ',') AS indexed_column_names
+FROM
+    pg_class ct
+JOIN
+    pg_namespace n ON ct.relnamespace = n.oid
+JOIN
+    pg_index i ON ct.oid = i.indrelid
+JOIN
+    pg_class ci ON i.indexrelid = ci.oid
+JOIN
+    pg_attribute a ON a.attrelid = ct.oid
+JOIN
+    UNNEST(i.indkey) WITH ORDINALITY AS ia(attnum, ord) ON a.attnum = ia.attnum
+WHERE
+    n.nspname = 'public'
+GROUP BY
+    n.nspname, ct.relname, ci.relname, i.indisunique, i.indexrelid
+ORDER BY
+    n.nspname, ct.relname, ci.relname;";
 
         let result = sqlx::query(sql).fetch_all(&self.pool).await?;
 
         let mut index_map: HashMap<String, Vec<IndexInfo>> = HashMap::new();
         for row in result {
-            let table_name = row.get(1);
-            let column_name = row.get(2);
-            let index_name = row.get(4);
-            let index_def = row.get(5);
-            index_map
-                .entry(table_name)
+            let is_unique = row.get::<String, usize>(3) == "UNIQUE";
+            let indexed_column_names = row.get::<String, usize>(5);
+            let columns = indexed_column_names.split(",").collect::<Vec<&str>>();
+
+            let table_name = row.get::<String, usize>(1);
+            let index_name = row.get::<String, usize>(2);
+            let index_def = row.get::<String, usize>(4);
+            
+            columns.iter().for_each(|column| {
+                index_map
+                .entry(table_name.clone())
                 .or_insert_with(Vec::new)
                 .push(IndexInfo {
-                    column_name,
-                    index_name,
-                    index_def,
+                    column_name: column.to_string(),
+                    index_name: index_name.to_string(),
+                    index_def: index_def.to_string(),
+                    is_unique: is_unique,
                 });
+            });
         }
 
         for table in table_vec {

@@ -118,7 +118,6 @@ impl MysqlMeta {
     }
 }
 
-
 #[async_trait]
 impl MetaTrait for MysqlMeta {
     async fn get_tables(&self) -> Result<Vec<TableInfo>, MetaError> {
@@ -165,10 +164,11 @@ impl MetaTrait for MysqlMeta {
         CONVERT(a.TABLE_SCHEMA,char),
         CONVERT(a.TABLE_NAME,char),
         CONVERT(a.index_name,char),
-        GROUP_CONCAT(a.column_name ORDER BY seq_in_index) AS `Columns`
+        GROUP_CONCAT(a.column_name ORDER BY seq_in_index) AS `Columns`,
+        CONVERT(a.NON_UNIQUE, char ) as `is_unique`
     FROM information_schema.statistics a
     WHERE a.table_schema = '{schema}' AND index_name <> 'PRIMARY'
-    GROUP BY a.TABLE_SCHEMA, a.TABLE_NAME, a.index_name",
+    GROUP BY a.TABLE_SCHEMA, a.TABLE_NAME, a.index_name, a.NON_UNIQUE",
             schema = self.conn_config.database
         );
 
@@ -176,14 +176,20 @@ impl MetaTrait for MysqlMeta {
 
         let mut index_map: HashMap<String, Vec<IndexInfo>> = HashMap::new();
         for row in rows {
-            index_map
-                .entry(row.get(1))
-                .or_insert_with(Vec::new)
-                .push(IndexInfo {
-                    column_name: row.get(0),
-                    index_name: row.get(1),
-                    index_def: "".to_string(),
-                });
+            let is_unique = row.get::<String, usize>(4) == "0";
+            let column_name = row.get::<String, usize>(3);
+            let columns = column_name.split(",").collect::<Vec<&str>>();
+            for ele in columns {
+                index_map
+                    .entry(row.get(1))
+                    .or_insert_with(Vec::new)
+                    .push(IndexInfo {
+                        column_name: ele.to_string(),
+                        index_name: row.get(2),
+                        index_def: "".to_string(),
+                        is_unique: is_unique,
+                    });
+            }
         }
 
         for table in table_vec {
