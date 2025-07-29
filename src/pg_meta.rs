@@ -84,7 +84,8 @@ FROM (SELECT NULL AS TABLE_CAT,
                JOIN pg_catalog.pg_namespace n ON (ct.relnamespace = n.oid)
                JOIN pg_catalog.pg_index i ON (a.attrelid = i.indrelid)
                JOIN pg_catalog.pg_class ci ON (ci.oid = i.indexrelid)
-      WHERE ci.relname like '%_pkey') result
+      WHERE ci.relname ~ '_pkey$'
+        AND a.attnum = ANY(i.indkey)) result
 ORDER BY result.table_name, result.pk_name, result.key_seq";
 
         let result = sqlx::query(sql).fetch_all(&self.pool).await?;
