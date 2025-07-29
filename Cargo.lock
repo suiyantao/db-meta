@@ -569,7 +569,7 @@ dependencies = [
 
 [[package]]
 name = "db-meta"
-version = "0.1.3"
+version = "2.0.0"
 dependencies = [
  "actix-rt",
  "actix-test",
